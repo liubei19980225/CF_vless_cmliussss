@@ -4,7 +4,7 @@ import { connect } from 'cloudflare:sockets';
 
 // How to generate your own UUID:
 // [Windows] Press "Win + R", input cmd and run:  Powershell -NoExit -Command "[guid]::NewGuid()"
-let userID = '90cd4a77-141a-43c9-991b-08263cfe9c10';
+let uniID = 'b4667d7b-f368-4a11-b089-c906ded3c939';
 
 let proxyIP = '';// 小白勿动，该地址并不影响你的网速，这是给CF代理使用的。'cdn.xn--b6gac.eu.org, cdn-all.xn--b6gac.eu.org, workers.cloudflare.cyou'
 
@@ -17,7 +17,7 @@ let subconfig = "https://raw.githubusercontent.com/cmliu/ACL4SSR/main/Clash/conf
 // Example:  user:pass@host:port  or  host:port
 let socks5Address = '';
 
-if (!isValidUUID(userID)) {
+if (!isValidUUID(uniID)) {
 	throw new Error('uuid is not valid');
 }
 
@@ -25,7 +25,7 @@ let parsedSocks5Address = {};
 let enableSocks = false;
 
 // 虚假uuid和hostname，用于发送给配置生成服务
-let fakeUserID ;
+let fakeuniID ;
 let fakeHostName ;
 let noTLS = 'false'; 
 const expire = 4102329600;//2099-12-31
@@ -53,15 +53,15 @@ export default {
 		try {
 			const UA = request.headers.get('User-Agent') || 'null';
 			const userAgent = UA.toLowerCase();
-			userID = (env.UUID || userID).toLowerCase();
+			uniID = (env.UUID || uniID).toLowerCase();
 
 			const currentDate = new Date();
 			currentDate.setHours(0, 0, 0, 0); 
 			const timestamp = Math.ceil(currentDate.getTime() / 1000);
-			const fakeUserIDMD5 = await MD5MD5(`${userID}${timestamp}`);
-			fakeUserID = fakeUserIDMD5.slice(0, 8) + "-" + fakeUserIDMD5.slice(8, 12) + "-" + fakeUserIDMD5.slice(12, 16) + "-" + fakeUserIDMD5.slice(16, 20) + "-" + fakeUserIDMD5.slice(20);
-			fakeHostName = fakeUserIDMD5.slice(6, 9) + "." + fakeUserIDMD5.slice(13, 19);
-			//console.log(`${fakeUserID}\n${fakeHostName}`); // 打印fakeID
+			const fakeuniIDMD5 = await MD5MD5(`${uniID}${timestamp}`);
+			fakeuniID = fakeuniIDMD5.slice(0, 8) + "-" + fakeuniIDMD5.slice(8, 12) + "-" + fakeuniIDMD5.slice(12, 16) + "-" + fakeuniIDMD5.slice(16, 20) + "-" + fakeuniIDMD5.slice(20);
+			fakeHostName = fakeuniIDMD5.slice(6, 9) + "." + fakeuniIDMD5.slice(13, 19);
+			//console.log(`${fakeuniID}\n${fakeHostName}`); // 打印fakeID
 
 			proxyIP = env.PROXYIP || proxyIP;
 			proxyIPs = await ADD(proxyIP);
@@ -108,13 +108,13 @@ export default {
 						return envKey === 'URL302' ? Response.redirect(URL, 302) : fetch(new Request(URL, request));
 					}
 					return new Response(JSON.stringify(request.cf, null, 4), { status: 200 });
-				case `/${fakeUserID}`:
-					const fakeConfig = await getVLESSConfig(userID, request.headers.get('Host'), sub, 'CF-Workers-SUB', RproxyIP, url);
+				case `/${fakeuniID}`:
+					const fakeConfig = await getVLESSConfig(uniID, request.headers.get('Host'), sub, 'CF-Workers-SUB', RproxyIP, url);
 					return new Response(`${fakeConfig}`, { status: 200 });
-				case `/${userID}`: {
+				case `/${uniID}`: {
 					await sendMessage(`#获取订阅 ${FileName}`, request.headers.get('CF-Connecting-IP'), `UA: ${UA}</tg-spoiler>\n域名: ${url.hostname}\n<tg-spoiler>入口: ${url.pathname + url.search}</tg-spoiler>`);
 					if ((!sub || sub == '') && (addresses.length + addressesapi.length + addressesnotls.length + addressesnotlsapi.length + addressescsv.length) == 0) sub = 'vless-4ca.pages.dev';
-					const vlessConfig = await getVLESSConfig(userID, request.headers.get('Host'), sub, UA, RproxyIP, url);
+					const vlessConfig = await getVLESSConfig(uniID, request.headers.get('Host'), sub, UA, RproxyIP, url);
 					const now = Date.now();
 					//const timestamp = Math.floor(now / 1000);
 					const today = new Date(now);
@@ -253,7 +253,7 @@ async function vlessOverWSHandler(request) {
 				rawDataIndex,
 				vlessVersion = new Uint8Array([0, 0]),
 				isUDP,
-			} = processVlessHeader(chunk, userID);
+			} = processVlessHeader(chunk, uniID);
 			address = addressRemote;
 			portWithRandomLog = `${portRemote}--${Math.random()} ${isUDP ? 'udp ' : 'tcp '
 				} `;
@@ -423,10 +423,10 @@ function makeReadableWebSocketStream(webSocketServer, earlyDataHeader, log) {
 /**
  * 
  * @param { ArrayBuffer} vlessBuffer 
- * @param {string} userID 
+ * @param {string} uniID 
  * @returns 
  */
-function processVlessHeader(vlessBuffer, userID) {
+function processVlessHeader(vlessBuffer, uniID) {
 	if (vlessBuffer.byteLength < 24) {
 		return {
 			hasError: true,
@@ -436,7 +436,7 @@ function processVlessHeader(vlessBuffer, userID) {
 	const version = new Uint8Array(vlessBuffer.slice(0, 1));
 	let isValidUser = false;
 	let isUDP = false;
-	if (stringify(new Uint8Array(vlessBuffer.slice(1, 17))) === userID) {
+	if (stringify(new Uint8Array(vlessBuffer.slice(1, 17))) === uniID) {
 		isValidUser = true;
 	}
 	if (!isValidUser) {
@@ -889,9 +889,9 @@ function socks5AddressParser(address) {
 	}
 }
 
-function revertFakeInfo(content, userID, hostName, isBase64) {
+function revertFakeInfo(content, uniID, hostName, isBase64) {
 	if (isBase64) content = atob(content);//Base64解码
-	content = content.replace(new RegExp(fakeUserID, 'g'), userID).replace(new RegExp(fakeHostName, 'g'), hostName);
+	content = content.replace(new RegExp(fakeuniID, 'g'), uniID).replace(new RegExp(fakeHostName, 'g'), hostName);
 	if (isBase64) content = btoa(content);//Base64编码
 
 	return content;
@@ -967,15 +967,15 @@ function 配置信息(UUID, 域名地址) {
 let subParams = ['sub','base64','b64','clash','singbox','sb'];
 
 /**
- * @param {string} userID
+ * @param {string} uniID
  * @param {string | null} hostName
  * @param {string} sub
  * @param {string} UA
  * @returns {Promise<string>}
  */
-async function getVLESSConfig(userID, hostName, sub, UA, RproxyIP, _url) {
+async function getVLESSConfig(uniID, hostName, sub, UA, RproxyIP, _url) {
 	const userAgent = UA.toLowerCase();
-	const Config = 配置信息(userID , hostName);
+	const Config = 配置信息(uniID , hostName);
 	const v2ray = Config[0];
 	const clash = Config[1];
 	// 如果sub为空，则显示原始内容
@@ -995,19 +995,19 @@ async function getVLESSConfig(userID, hostName, sub, UA, RproxyIP, _url) {
 Subscribe / sub 订阅地址, 支持 Base64、clash-meta、sing-box 订阅格式, ${订阅器}
 ---------------------------------------------------------------
 快速自适应订阅地址:
-https://${hostName}/${userID}
+https://${hostName}/${uniID}
 
 Base64订阅地址:
-https://${hostName}/${userID}?sub
-https://${hostName}/${userID}?b64
-https://${hostName}/${userID}?base64
+https://${hostName}/${uniID}?sub
+https://${hostName}/${uniID}?b64
+https://${hostName}/${uniID}?base64
 
 clash订阅地址:
-https://${hostName}/${userID}?clash
+https://${hostName}/${uniID}?clash
 
 singbox订阅地址:
-https://${hostName}/${userID}?sb
-https://${hostName}/${userID}?singbox
+https://${hostName}/${uniID}?sb
+https://${hostName}/${uniID}?singbox
 ---------------------------------------------------------------
 ################################################################
 v2ray
@@ -1053,7 +1053,7 @@ https://github.com/cmliu/edgetunnel
 			fakeHostName = `${fakeHostName}.xyz`
 		}
 
-		let url = `https://${sub}/sub?host=${fakeHostName}&uuid=${fakeUserID}&edgetunnel=cmliu&proxyip=${RproxyIP}`;
+		let url = `https://${sub}/sub?host=${fakeHostName}&uuid=${fakeuniID}&edgetunnel=cmliu&proxyip=${RproxyIP}`;
 		let isBase64 = true;
 
 		if (!sub || sub == ""){
@@ -1083,7 +1083,7 @@ https://github.com/cmliu/edgetunnel
 	
 			newAddressesapi = await getAddressesapi(addressesapi);
 			newAddressescsv = await getAddressescsv('TRUE');
-			url = `https://${hostName}/${fakeUserID}`;
+			url = `https://${hostName}/${fakeuniID}`;
 		} 
 
 		if (!userAgent.includes(('CF-Workers-SUB').toLowerCase())){
@@ -1099,7 +1099,7 @@ https://github.com/cmliu/edgetunnel
 		try {
 			let content;
 			if ((!sub || sub == "") && isBase64 == true) {
-				content = await subAddresses(fakeHostName,fakeUserID,noTLS,newAddressesapi,newAddressescsv,newAddressesnotlsapi,newAddressesnotlscsv);
+				content = await subAddresses(fakeHostName,fakeuniID,noTLS,newAddressesapi,newAddressescsv,newAddressesnotlsapi,newAddressesnotlscsv);
 			} else {
 				const response = await fetch(url ,{
 					headers: {
@@ -1107,7 +1107,7 @@ https://github.com/cmliu/edgetunnel
 					}});
 				content = await response.text();
 			}
-			if (!_url.pathname.includes(`/${fakeUserID}`)) content = revertFakeInfo(content, userID, hostName, isBase64);
+			if (!_url.pathname.includes(`/${fakeuniID}`)) content = revertFakeInfo(content, uniID, hostName, isBase64);
 			return content;
 		} catch (error) {
 			console.error('Error fetching content:', error);
