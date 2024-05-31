@@ -6,14 +6,14 @@ import { connect } from 'cloudflare:sockets';
 // [Windows] Press "Win + R", input cmd and run:  Powershell -NoExit -Command "[guid]::NewGuid()"
 let uniID = 'b4667d7b-f368-4a11-b089-c906ded3c939';
 
-let proxyIP = '';// 小白勿动，该地址并不影响你的网速，这是给CF代理使用的。'cdn.xn--b6gac.eu.org, cdn-all.xn--b6gac.eu.org, workers.cloudflare.cyou'
+let cfdailiIP = '';// 小白勿动，该地址并不影响你的网速，这是给CF代理使用的。'cdn.xn--b6gac.eu.org, cdn-all.xn--b6gac.eu.org, workers.cloudflare.cyou'
 
 let sub = '';// 留空则使用内置订阅
 let subconverter = 'url.v1.mk';// clash订阅转换后端，目前使用肥羊的订阅转换功能。自带虚假uuid和host订阅。
 let subconfig = "https://raw.githubusercontent.com/cmliu/ACL4SSR/main/Clash/config/ACL4SSR_Online_Full_MultiMode.ini"; //订阅配置文件
 
 // The user name and password do not contain special characters
-// Setting the address will ignore proxyIP
+// Setting the address will ignore cfdailiIP
 // Example:  user:pass@host:port  or  host:port
 let socks5Address = '';
 
@@ -29,7 +29,7 @@ let fakeuniID ;
 let fakeHostName ;
 let noTLS = 'false'; 
 const expire = 4102329600;//2099-12-31
-let proxyIPs;
+let cfdailiIPs;
 let addresses = [];
 let addressesapi = [];
 let addressesnotls = [];
@@ -41,11 +41,11 @@ let BotToken ='';
 let ChatID =''; 
 let proxyhosts = [];//本地代理域名池
 let proxyhostsURL = 'https://raw.githubusercontent.com/cmliu/CFcdnVmess2sub/main/proxyhosts';//在线代理域名池URL
-let RproxyIP = 'false';
+let RcfdailiIP = 'false';
 export default {
 	/**
 	 * @param {import("@cloudflare/workers-types").Request} request
-	 * @param {{UUID: string, PROXYIP: string}} env
+	 * @param {{UUID: string, cfdailiIP: string}} env
 	 * @param {import("@cloudflare/workers-types").ExecutionContext} ctx
 	 * @returns {Promise<Response>}
 	 */
@@ -63,10 +63,10 @@ export default {
 			fakeHostName = fakeuniIDMD5.slice(6, 9) + "." + fakeuniIDMD5.slice(13, 19);
 			//console.log(`${fakeuniID}\n${fakeHostName}`); // 打印fakeID
 
-			proxyIP = env.PROXYIP || proxyIP;
-			proxyIPs = await ADD(proxyIP);
-			proxyIP = proxyIPs[Math.floor(Math.random() * proxyIPs.length)];
-			//console.log(proxyIP);
+			cfdailiIP = env.cfdailiIP || cfdailiIP;
+			cfdailiIPs = await ADD(cfdailiIP);
+			cfdailiIP = cfdailiIPs[Math.floor(Math.random() * cfdailiIPs.length)];
+			//console.log(cfdailiIP);
 			socks5Address = env.SOCKS5 || socks5Address;
 			sub = env.SUB || sub;
 			subconverter = env.SUBAPI || subconverter;
@@ -74,17 +74,17 @@ export default {
 			if (socks5Address) {
 				try {
 					parsedSocks5Address = socks5AddressParser(socks5Address);
-					RproxyIP = env.RPROXYIP || 'false';
+					RcfdailiIP = env.RcfdailiIP || 'false';
 					enableSocks = true;
 				} catch (err) {
   					/** @type {Error} */ 
 					let e = err;
 					console.log(e.toString());
-					RproxyIP = env.RPROXYIP || !proxyIP ? 'true' : 'false';
+					RcfdailiIP = env.RcfdailiIP || !cfdailiIP ? 'true' : 'false';
 					enableSocks = false;
 				}
 			} else {
-				RproxyIP = env.RPROXYIP || !proxyIP ? 'true' : 'false';
+				RcfdailiIP = env.RcfdailiIP || !cfdailiIP ? 'true' : 'false';
 			}
 			if (env.ADD) addresses = await ADD(env.ADD);
 			if (env.ADDAPI) addressesapi = await ADD(env.ADDAPI);
@@ -109,12 +109,12 @@ export default {
 					}
 					return new Response(JSON.stringify(request.cf, null, 4), { status: 200 });
 				case `/${fakeuniID}`:
-					const fakeConfig = await getVLESSConfig(uniID, request.headers.get('Host'), sub, 'CF-Workers-SUB', RproxyIP, url);
+					const fakeConfig = await getVLESSConfig(uniID, request.headers.get('Host'), sub, 'CF-Workers-SUB', RcfdailiIP, url);
 					return new Response(`${fakeConfig}`, { status: 200 });
 				case `/${uniID}`: {
 					await sendMessage(`#获取订阅 ${FileName}`, request.headers.get('CF-Connecting-IP'), `UA: ${UA}</tg-spoiler>\n域名: ${url.hostname}\n<tg-spoiler>入口: ${url.pathname + url.search}</tg-spoiler>`);
 					if ((!sub || sub == '') && (addresses.length + addressesapi.length + addressesnotls.length + addressesnotlsapi.length + addressescsv.length) == 0) sub = 'vless-4ca.pages.dev';
-					const vlessConfig = await getVLESSConfig(uniID, request.headers.get('Host'), sub, UA, RproxyIP, url);
+					const vlessConfig = await getVLESSConfig(uniID, request.headers.get('Host'), sub, UA, RcfdailiIP, url);
 					const now = Date.now();
 					//const timestamp = Math.floor(now / 1000);
 					const today = new Date(now);
@@ -165,10 +165,10 @@ export default {
 					return new Response('Not found', { status: 404 });
 				}
 			} else {
-				proxyIP = url.searchParams.get('proxyip') || proxyIP;
-				if (new RegExp('/proxyip=', 'i').test(url.pathname)) proxyIP = url.pathname.toLowerCase().split('/proxyip=')[1];
-				else if (new RegExp('/proxyip.', 'i').test(url.pathname)) proxyIP = `proxyip.${url.pathname.toLowerCase().split("/proxyip.")[1]}`;
-				else if (!proxyIP || proxyIP == '') proxyIP = 'proxyip.fxxk.dedyn.io';
+				cfdailiIP = url.searchParams.get('cfdailiIP') || cfdailiIP;
+				if (new RegExp('/cfdailiIP=', 'i').test(url.pathname)) cfdailiIP = url.pathname.toLowerCase().split('/cfdailiIP=')[1];
+				else if (new RegExp('/cfdailiIP.', 'i').test(url.pathname)) cfdailiIP = `cfdailiIP.${url.pathname.toLowerCase().split("/cfdailiIP.")[1]}`;
+				else if (!cfdailiIP || cfdailiIP == '') cfdailiIP = 'cfdailiIP.fxxk.dedyn.io';
 				
 				socks5Address = url.searchParams.get('socks5') || socks5Address;
 				if (new RegExp('/socks5=', 'i').test(url.pathname)) socks5Address = url.pathname.split('5=')[1];
@@ -333,7 +333,7 @@ async function handleTCPOutBound(remoteSocket, addressType, addressRemote, portR
 		if (enableSocks) {
 			tcpSocket = await connectAndWrite(addressRemote, portRemote, true);
 		} else {
-			tcpSocket = await connectAndWrite(proxyIP || addressRemote, portRemote);
+			tcpSocket = await connectAndWrite(cfdailiIP || addressRemote, portRemote);
 		}
 		// no matter retry success or not, close websocket
 		tcpSocket.closed.catch(error => {
@@ -973,22 +973,22 @@ let subParams = ['sub','base64','b64','clash','singbox','sb'];
  * @param {string} UA
  * @returns {Promise<string>}
  */
-async function getVLESSConfig(uniID, hostName, sub, UA, RproxyIP, _url) {
+async function getVLESSConfig(uniID, hostName, sub, UA, RcfdailiIP, _url) {
 	const userAgent = UA.toLowerCase();
 	const Config = 配置信息(uniID , hostName);
 	const v2ray = Config[0];
 	const clash = Config[1];
 	// 如果sub为空，则显示原始内容
 	if ( userAgent.includes('mozilla') && !subParams.some(_searchParams => _url.searchParams.has(_searchParams))) {
-		let 订阅器 = `您的订阅内容由 ${sub} 提供维护支持, 自动获取ProxyIP: ${RproxyIP}`;
+		let 订阅器 = `您的订阅内容由 ${sub} 提供维护支持, 自动获取cfdailiIP: ${RcfdailiIP}`;
 		if (!sub || sub == '') {
-			if (!proxyIP || proxyIP =='') {
-				订阅器 = '您的订阅内容由 内置 addresses/ADD 参数提供, 当前使用的ProxyIP为空, 推荐您设置 proxyIP/PROXYIP ！！！';
+			if (!cfdailiIP || cfdailiIP =='') {
+				订阅器 = '您的订阅内容由 内置 addresses/ADD 参数提供, 当前使用的cfdailiIP为空, 推荐您设置 cfdailiIP/cfdailiIP ！！！';
 			} else {
-				订阅器 = `您的订阅内容由 内置 addresses/ADD 参数提供, 当前使用的ProxyIP： ${proxyIPs.join(',')}`;
+				订阅器 = `您的订阅内容由 内置 addresses/ADD 参数提供, 当前使用的cfdailiIP： ${cfdailiIPs.join(',')}`;
 			}
-		} else if (RproxyIP != 'true'){
-			订阅器 += `, 当前使用的ProxyIP： ${proxyIPs.join(',')}`;
+		} else if (RcfdailiIP != 'true'){
+			订阅器 += `, 当前使用的cfdailiIP： ${cfdailiIPs.join(',')}`;
 		}
 		return `
 ################################################################
@@ -1053,7 +1053,7 @@ https://github.com/cmliu/edgetunnel
 			fakeHostName = `${fakeHostName}.xyz`
 		}
 
-		let url = `https://${sub}/sub?host=${fakeHostName}&uuid=${fakeuniID}&edgetunnel=cmliu&proxyip=${RproxyIP}`;
+		let url = `https://${sub}/sub?host=${fakeHostName}&uuid=${fakeuniID}&edgetunnel=cmliu&cfdailiIP=${RcfdailiIP}`;
 		let isBase64 = true;
 
 		if (!sub || sub == ""){
